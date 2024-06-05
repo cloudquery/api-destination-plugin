@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/cloudquery/plugin-sdk/v4/message"
 	"github.com/cloudquery/plugin-sdk/v4/schema"
 )
@@ -37,15 +38,40 @@ func (c *Client) sendToAPI(endpoint string, data []byte) error {
 	return nil
 }
 
+type AppendRequestBody struct {
+	Name   string `json:"name"`
+	Record string `json:"record"`
+}
+
+func getDataAsJsonBytes(data interface{}) ([]byte, error) {
+	reqBodyBytes := new(bytes.Buffer)
+	enc := json.NewEncoder(reqBodyBytes)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(data); err != nil {
+		return nil, err
+	}
+	return reqBodyBytes.Bytes(), nil
+}
+
 // WriteTable sends records to the /append endpoint
 func (c *Client) WriteTable(ctx context.Context, msg *message.WriteInsert) error {
-	data, err := json.Marshal(msg.Record)
-	if err != nil {
-		return fmt.Errorf("failed to marshal record: %w", err)
-	}
-
-	if err := c.sendToAPI("/append", data); err != nil {
-		return err
+	arr := array.RecordToStructArray(msg.Record)
+	for i := 0; i < arr.Len(); i++ {
+		data, err := getDataAsJsonBytes(arr.GetOneForMarshal(i))
+		if err != nil {
+			return err
+		}
+		reqBody := AppendRequestBody{
+			Name:   msg.GetTable().Name,
+			Record: string(data),
+		}
+		bodyBytes, err := getDataAsJsonBytes(reqBody)
+		if err != nil {
+			return err
+		}
+		if err := c.sendToAPI("/append", bodyBytes); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -70,11 +96,6 @@ func (c *Client) Write(ctx context.Context, msgs <-chan message.WriteMessage) er
 	for msg := range msgs {
 		switch m := msg.(type) {
 		case *message.WriteInsert:
-			// Migrate the table schema before writing data
-			if err := c.MigrateTable(ctx, m.GetTable()); err != nil {
-				return err
-			}
-
 			if err := c.WriteTable(ctx, m); err != nil {
 				return err
 			}
