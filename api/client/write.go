@@ -78,6 +78,10 @@ func (c *Client) Write(ctx context.Context, msgs <-chan message.WriteMessage) er
 			if err := c.WriteTable(ctx, m); err != nil {
 				return err
 			}
+		case *message.WriteMigrateTable:
+			if err := c.MigrateTable(ctx, m.GetTable()); err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("unsupported message type: %T", msg)
 		}
