@@ -36,7 +36,6 @@ func New(_ context.Context, logger zerolog.Logger, s []byte, opts plugin.NewClie
 	if err := c.spec.Validate(); err != nil {
 		return nil, err
 	}
-	c.spec.SetDefaults()
 
 	return c, nil
 }
