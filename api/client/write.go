@@ -95,10 +95,6 @@ func (c *Client) MigrateTable(ctx context.Context, table *schema.Table) error {
 func (c *Client) Write(ctx context.Context, msgs <-chan message.WriteMessage) error {
 	for msg := range msgs {
 		switch m := msg.(type) {
-		case *message.WriteMigrateTable:
-			if err := c.MigrateTable(ctx, m.GetTable()); err != nil {
-				return err
-			}
 		case *message.WriteInsert:
 			if err := c.WriteTable(ctx, m); err != nil {
 				return err
