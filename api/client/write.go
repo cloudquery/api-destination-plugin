@@ -69,7 +69,7 @@ func (c *Client) WriteTable(ctx context.Context, msg *message.WriteInsert) error
 		if err != nil {
 			return err
 		}
-		if err := c.sendToAPI("/append", bodyBytes); err != nil {
+		if err := c.sendToAPI("/write", bodyBytes); err != nil {
 			return err
 		}
 	}
